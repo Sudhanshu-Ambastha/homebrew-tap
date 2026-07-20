@@ -1,0 +1,46 @@
+name: Update Homebrew Formulas
+
+on:
+  repository_dispatch:
+    types: [update-jar-cart]
+
+permissions:
+  contents: write
+
+jobs:
+  update-formulas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Homebrew Tap Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Extract Payload Data
+        id: payload
+        run: |
+          TAG_REF="${{ github.event.client_payload.ref }}"
+          echo "tag_ref=$TAG_REF" >> $GITHUB_OUTPUT
+
+          VERSION="${TAG_REF#v}"
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          echo "linux_sha256=${{ github.event.client_payload.linux_sha256 }}" >> $GITHUB_OUTPUT
+          echo "macos_sha256=${{ github.event.client_payload.macos_sha256 }}" >> $GITHUB_OUTPUT
+
+      - name: Run Formula Generation Script
+        run: |
+          chmod +x ./scripts/update-formulas.sh
+          ./scripts/update-formulas.sh \
+            "${{ steps.payload.outputs.tag_ref }}" \
+            "${{ steps.payload.outputs.linux_sha256 }}" \
+            "${{ steps.payload.outputs.macos_sha256 }}"
+
+      - name: Run Git Commit and Push Script
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          chmod +x ./scripts/git-commit-push.sh
+          ./scripts/git-commit-push.sh "." "Update jar-cart formulas to ${{ steps.payload.outputs.tag_ref }}"
