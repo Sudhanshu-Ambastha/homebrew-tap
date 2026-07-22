@@ -1,5 +1,6 @@
-class JarCart < Formula
-  desc "Lightning-fast, no-build Java build orchestrator"
+class JarCartAT06 < Formula
+  desc "Lightning-fast, no-build Java build orchestrator (0.6.x line)"
+  keg_only "this is a pinned version; install jar-cart for the latest release"
   homepage "https://github.com/Sudhanshu-Ambastha/jar-cart"
   license "MIT"
   on_macos do
