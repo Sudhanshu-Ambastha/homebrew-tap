@@ -19,20 +19,37 @@ jobs:
       - name: Extract Payload Data
         id: payload
         run: |
+          PROJECT_NAME="${{ github.event.client_payload.project_name }}"
+          if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="jar-cart"
+          fi
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+
           TAG_REF="${{ github.event.client_payload.ref }}"
           echo "tag_ref=$TAG_REF" >> $GITHUB_OUTPUT
 
           VERSION="${TAG_REF#v}"
-          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
           echo "linux_sha256=${{ github.event.client_payload.linux_sha256 }}" >> $GITHUB_OUTPUT
           echo "macos_sha256=${{ github.event.client_payload.macos_sha256 }}" >> $GITHUB_OUTPUT
 
+      - name: Validate Payload and Script Existence
+        run: |
+          chmod +x ./scripts/validate-release.sh
+          ./scripts/validate-release.sh \
+            "${{ steps.payload.outputs.project_name }}" \
+            "${{ steps.payload.outputs.tag_ref }}" \
+            "${{ steps.payload.outputs.linux_sha256 }}" \
+            "${{ steps.payload.outputs.macos_sha256 }}"
+
       - name: Run Formula Generation Script
         run: |
-          chmod +x ./scripts/update-formulas.sh
-          ./scripts/update-formulas.sh \
+          PROJECT_NAME="${{ steps.payload.outputs.project_name }}"
+          SCRIPT_PATH="./scripts/update-${PROJECT_NAME}-formulas.sh"
+
+          chmod +x "$SCRIPT_PATH"
+          "$SCRIPT_PATH" \
             "${{ steps.payload.outputs.tag_ref }}" \
             "${{ steps.payload.outputs.linux_sha256 }}" \
             "${{ steps.payload.outputs.macos_sha256 }}"
@@ -43,4 +60,6 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
           chmod +x ./scripts/git-commit-push.sh
-          ./scripts/git-commit-push.sh "." "Update jar-cart formulas to ${{ steps.payload.outputs.tag_ref }}"
+          ./scripts/git-commit-push.sh \
+            "${{ steps.payload.outputs.project_name }}" \
+            "${{ steps.payload.outputs.tag_ref }}"

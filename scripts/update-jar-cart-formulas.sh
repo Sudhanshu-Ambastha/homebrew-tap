@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -e
 
 TAG_REF="$1"
